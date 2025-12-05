@@ -44,16 +44,20 @@ export function Sidebar() {
     channel
       .on('presence', { event: 'sync' }, () => {
         const newState = channel.presenceState()
-        const users = [] as OnlineUser[]
+        const uniqueUsers = new Map() // Use a Map to filter duplicates
         
         for (const id in newState) {
-          // FIXED: Added "as OnlineUser" so TypeScript knows the shape of the data
-          const user_info = newState[id][0] as unknown as OnlineUser
-          if (user_info && user_info.username) {
-            users.push(user_info)
+          // @ts-ignore
+          const user_info = newState[id][0] as OnlineUser
+          
+          // Only add the user if we haven't seen their user_id yet
+          if (user_info && user_info.username && !uniqueUsers.has(user_info.user_id)) {
+            uniqueUsers.set(user_info.user_id, user_info)
           }
         }
-        setOnlineUsers(users)
+        
+        // Convert the Map values back to an array
+        setOnlineUsers(Array.from(uniqueUsers.values()) as OnlineUser[])
       })
       .subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
@@ -93,7 +97,8 @@ export function Sidebar() {
   }
 
   return (
-    <div className="h-screen w-64 border-r bg-gray-900 text-white flex flex-col flex-shrink-0">
+    <div className="h-full w-64 bg-gray-900 text-white flex flex-col flex-shrink-0">
+      {/* HEADER */}
       <div className="p-4 border-b border-gray-800 font-bold text-lg flex items-center justify-between">
         <span>Team Chat</span>
         <Button onClick={handleCreateChannel} size="icon" variant="ghost" className="h-8 w-8 text-gray-400 hover:text-white hover:bg-gray-800">
@@ -101,6 +106,7 @@ export function Sidebar() {
         </Button>
       </div>
 
+      {/* SCROLLABLE AREA */}
       <div className="flex-1 overflow-y-auto p-2 space-y-6">
         {/* CHANNELS SECTION */}
         <div>
@@ -128,8 +134,8 @@ export function Sidebar() {
             <span>Online — {onlineUsers.length}</span>
           </div>
           <div className="flex flex-col gap-1 px-2">
-            {onlineUsers.map((user, idx) => (
-              <div key={user.user_id + idx} className="flex items-center gap-2 text-sm text-gray-300 py-1">
+            {onlineUsers.map((user) => (
+              <div key={user.user_id} className="flex items-center gap-2 text-sm text-gray-300 py-1">
                 <div className="relative">
                   <User className="h-4 w-4 text-gray-400" />
                   <Circle className="h-2 w-2 absolute -bottom-0.5 -right-0.5 fill-green-500 text-green-500 border-2 border-gray-900 rounded-full box-content" />
